@@ -280,7 +280,7 @@
 													</p>
 												{/if}
 											</div>
-											<a href={`/vacancy_details?id=${v.id_vacancy}`}>
+											<a href={`/vacancyDetails?id=${v.id_vacancy}`}>
 												<button
 													class="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
 												>
