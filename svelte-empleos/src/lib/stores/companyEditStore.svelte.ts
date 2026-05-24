@@ -43,6 +43,32 @@ export interface VacancyForm {
 	benefits: string;
 }
 
+export interface Vacancy {
+	id_vacancy: string;
+	title: string;
+	contract_type?: string | null;
+	location?: string | null;
+	experience_level?: string | null;
+	salary_min?: number | null;
+	salary_max?: number | null;
+	description?: string | null;
+	requirements?: string | null;
+	benefits?: string | null;
+	is_active?: boolean;
+	created_at?: string;
+}
+
+export interface Review {
+	id_review: string;
+	rating: number;
+	comment?: string;
+	created_at?: string;
+	users?: {
+		full_name?: string;
+		professional_title?: string;
+	};
+}
+
 export interface Application {
 	id_application: string;
 	id_user: string;
@@ -67,11 +93,26 @@ export const CONTRACT_MAP: Record<string, string> = {
 	Pasantía: 'internship'
 };
 
+export const CONTRACT_LABEL: Record<string, string> = {
+	full_time: 'Tiempo Completo',
+	part_time: 'Medio Tiempo',
+	contract: 'Contrato',
+	freelance: 'Freelance',
+	internship: 'Pasantía'
+};
+
 export const EXPERIENCE_MAP: Record<string, string> = {
 	'Junior (0-2 años)': 'junior',
 	'Semi-Senior (2-5 años)': 'mid',
 	'Senior (5+ años)': 'senior',
 	'Lead / Manager': 'executive'
+};
+
+export const EXPERIENCE_LABEL: Record<string, string> = {
+	junior: 'Junior (0-2 años)',
+	mid: 'Semi-Senior (2-5 años)',
+	senior: 'Senior (5+ años)',
+	executive: 'Lead / Manager'
 };
 
 export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -135,16 +176,32 @@ function createCompanyDashboardStore() {
 	// Logo
 	let logoUploading = $state(false);
 
-	// Vacante
+	// Vacante (publicar)
 	let vacancyForm = $state<VacancyForm>(emptyVacancyForm());
 	let vacancyPublishing = $state(false);
 	let vacancyMessage = $state<{ text: string; ok: boolean } | null>(null);
+
+	// Gestión de vacantes
+	let vacancies = $state<Vacancy[]>([]);
+	let vacanciesLoading = $state(false);
+	let vacanciesError = $state<string | null>(null);
+	let togglingVacancy = $state<string | null>(null);
+	let deletingVacancy = $state<string | null>(null);
+	let editingVacancy = $state<Vacancy | null>(null);
+	let editVacancyForm = $state<VacancyForm>(emptyVacancyForm());
+	let editVacancySaving = $state(false);
+	let editVacancyMessage = $state<{ text: string; ok: boolean } | null>(null);
+
+	// Reseñas
+	let reviews = $state<Review[]>([]);
+	let reviewsLoading = $state(false);
+	let reviewsError = $state<string | null>(null);
 
 	// Aplicaciones
 	let applications = $state<Application[]>([]);
 	let applicationsLoading = $state(false);
 	let applicationsError = $state<string | null>(null);
-	let updatingStatus = $state<string | null>(null); // id_application being updated
+	let updatingStatus = $state<string | null>(null);
 
 	const companyId = typeof localStorage !== 'undefined' ? localStorage.getItem('companyId') : null;
 	const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
@@ -180,6 +237,42 @@ function createCompanyDashboardStore() {
 		},
 		get vacancyMessage() {
 			return vacancyMessage;
+		},
+		get vacancies() {
+			return vacancies;
+		},
+		get vacanciesLoading() {
+			return vacanciesLoading;
+		},
+		get vacanciesError() {
+			return vacanciesError;
+		},
+		get togglingVacancy() {
+			return togglingVacancy;
+		},
+		get deletingVacancy() {
+			return deletingVacancy;
+		},
+		get editingVacancy() {
+			return editingVacancy;
+		},
+		get editVacancyForm() {
+			return editVacancyForm;
+		},
+		get editVacancySaving() {
+			return editVacancySaving;
+		},
+		get editVacancyMessage() {
+			return editVacancyMessage;
+		},
+		get reviews() {
+			return reviews;
+		},
+		get reviewsLoading() {
+			return reviewsLoading;
+		},
+		get reviewsError() {
+			return reviewsError;
 		},
 		get applications() {
 			return applications;
@@ -243,7 +336,6 @@ function createCompanyDashboardStore() {
 					const err = await res.json();
 					throw new Error(err.message ?? 'Error en el servidor');
 				}
-				// Sync local profile logo_url with updated form data
 				if (profile) profile = { ...profile, ...body } as CompanyProfile;
 				profileMessage = { text: 'Perfil actualizado correctamente.', ok: true };
 			} catch (e) {
@@ -263,11 +355,9 @@ function createCompanyDashboardStore() {
 				profileMessage = { text: 'La imagen no puede superar los 5MB.', ok: false };
 				return;
 			}
-
 			logoUploading = true;
 			const formData = new FormData();
 			formData.append('logo', file);
-
 			try {
 				const res = await fetch(`${API_URL}/companies/${companyId}/logo`, {
 					method: 'POST',
@@ -285,7 +375,7 @@ function createCompanyDashboardStore() {
 			}
 		},
 
-		// ----------------------------------VACANTES--------------------------------------
+		// ----------------------------------VACANTES (publicar) --------------------------------------
 
 		async publishVacancy() {
 			if (!companyId) return;
@@ -293,10 +383,8 @@ function createCompanyDashboardStore() {
 				vacancyMessage = { text: 'El título del puesto es obligatorio.', ok: false };
 				return;
 			}
-
 			vacancyPublishing = true;
 			vacancyMessage = null;
-
 			const body = {
 				id_company: companyId,
 				title: vacancyForm.title.trim(),
@@ -309,7 +397,6 @@ function createCompanyDashboardStore() {
 				requirements: vacancyForm.requirements.trim() || null,
 				benefits: vacancyForm.benefits.trim() || null
 			};
-
 			try {
 				const res = await fetch(`${API_URL}/vacancy`, {
 					method: 'POST',
@@ -320,6 +407,8 @@ function createCompanyDashboardStore() {
 				if (data.id_vacancy) {
 					vacancyMessage = { text: 'Vacante publicada correctamente.', ok: true };
 					vacancyForm = emptyVacancyForm();
+					// Refresh the vacancies list if it's already loaded
+					if (vacancies.length > 0) vacancies = [data, ...vacancies];
 				} else {
 					vacancyMessage = { text: data.message ?? 'Error al publicar la vacante.', ok: false };
 				}
@@ -327,6 +416,134 @@ function createCompanyDashboardStore() {
 				vacancyMessage = { text: 'Error al conectar con el servidor.', ok: false };
 			} finally {
 				vacancyPublishing = false;
+			}
+		},
+
+		// ----------------------------------GESTIÓN DE VACANTES--------------------------------------
+
+		async loadVacancies() {
+			if (!companyId) return;
+			vacanciesLoading = true;
+			vacanciesError = null;
+			try {
+				const res = await fetch(`${API_URL}/vacancy/company/${companyId}`, {
+					headers: authHeaders
+				});
+				const data = await res.json();
+				vacancies = Array.isArray(data) ? data : [];
+			} catch {
+				vacanciesError = 'Error al cargar las vacantes.';
+			} finally {
+				vacanciesLoading = false;
+			}
+		},
+
+		async toggleVacancyStatus(vacancyId: string, currentActive: boolean) {
+			togglingVacancy = vacancyId;
+			try {
+				await fetch(`${API_URL}/vacancy/${vacancyId}`, {
+					method: 'PUT',
+					headers: authHeaders,
+					body: JSON.stringify({ is_active: !currentActive })
+				});
+				vacancies = vacancies.map((v) =>
+					v.id_vacancy === vacancyId ? { ...v, is_active: !currentActive } : v
+				);
+			} catch {
+			} finally {
+				togglingVacancy = null;
+			}
+		},
+
+		async deleteVacancy(vacancyId: string) {
+			deletingVacancy = vacancyId;
+			try {
+				await fetch(`${API_URL}/vacancy/${vacancyId}`, {
+					method: 'DELETE',
+					headers: authHeaders
+				});
+				vacancies = vacancies.filter((v) => v.id_vacancy !== vacancyId);
+			} catch {
+			} finally {
+				deletingVacancy = null;
+			}
+		},
+
+		openEditVacancy(vacancy: Vacancy) {
+			editingVacancy = vacancy;
+			editVacancyMessage = null;
+			const contractLabel =
+				Object.entries(CONTRACT_MAP).find(([, v]) => v === vacancy.contract_type)?.[0] ?? '';
+			const experienceLabel =
+				Object.entries(EXPERIENCE_MAP).find(([, v]) => v === vacancy.experience_level)?.[0] ?? '';
+			editVacancyForm = {
+				title: vacancy.title ?? '',
+				contract_type: contractLabel,
+				location: vacancy.location ?? '',
+				experience_level: experienceLabel,
+				salary_min: vacancy.salary_min?.toString() ?? '',
+				salary_max: vacancy.salary_max?.toString() ?? '',
+				description: vacancy.description ?? '',
+				requirements: vacancy.requirements ?? '',
+				benefits: vacancy.benefits ?? ''
+			};
+		},
+
+		closeEditVacancy() {
+			editingVacancy = null;
+			editVacancyMessage = null;
+		},
+
+		async saveEditVacancy() {
+			if (!editingVacancy) return;
+			editVacancySaving = true;
+			editVacancyMessage = null;
+			const body = {
+				title: editVacancyForm.title.trim(),
+				contract_type: CONTRACT_MAP[editVacancyForm.contract_type] ?? null,
+				location: editVacancyForm.location.trim() || null,
+				experience_level: EXPERIENCE_MAP[editVacancyForm.experience_level] ?? null,
+				salary_min: parseInt(editVacancyForm.salary_min) || null,
+				salary_max: parseInt(editVacancyForm.salary_max) || null,
+				description: editVacancyForm.description.trim() || null,
+				requirements: editVacancyForm.requirements.trim() || null,
+				benefits: editVacancyForm.benefits.trim() || null
+			};
+			try {
+				const res = await fetch(`${API_URL}/vacancy/${editingVacancy.id_vacancy}`, {
+					method: 'PUT',
+					headers: authHeaders,
+					body: JSON.stringify(body)
+				});
+				if (!res.ok) throw new Error('Error al guardar');
+				vacancies = vacancies.map((v) =>
+					v.id_vacancy === editingVacancy!.id_vacancy ? { ...v, ...body } : v
+				);
+				editVacancyMessage = { text: 'Vacante actualizada correctamente.', ok: true };
+				editingVacancy = null;
+			} catch {
+				editVacancyMessage = { text: 'Error al guardar los cambios.', ok: false };
+			} finally {
+				editVacancySaving = false;
+			}
+		},
+
+		// ----------------------------------RESEÑAS--------------------------------------------------
+
+		async loadReviews() {
+			if (!companyId) return;
+			reviewsLoading = true;
+			reviewsError = null;
+			try {
+				const res = await fetch(`${API_URL}/reviews/company/${companyId}`, {
+					headers: authHeaders
+				});
+				const data = await res.json();
+				reviews = Array.isArray(data) ? data : [];
+			} catch {
+				reviewsError = 'Error al cargar las reseñas.';
+			} finally {
+				reviewsLoading = false;
 			}
 		},
 
