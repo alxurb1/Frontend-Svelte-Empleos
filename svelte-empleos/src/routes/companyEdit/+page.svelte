@@ -456,12 +456,12 @@
 									<div class="mb-1.5 flex flex-wrap items-center gap-2">
 										<p class="text-sm font-semibold text-gray-800">{vacancy.title}</p>
 										<span
-											class="rounded-full px-2 py-0.5 text-xs font-semibold {vacancy.is_active !==
-											false
+											class="rounded-full px-2 py-0.5 text-xs font-semibold {vacancy.status ===
+											'active'
 												? 'bg-green-100 text-green-700'
 												: 'bg-gray-200 text-gray-500'}"
 										>
-											{vacancy.is_active !== false ? 'Activa' : 'Inactiva'}
+											{vacancy.status === 'active' ? 'Activa' : 'Inactiva'}
 										</span>
 									</div>
 
@@ -513,13 +513,13 @@
 
 										<button
 											onclick={() =>
-												s.toggleVacancyStatus(vacancy.id_vacancy, vacancy.is_active !== false)}
+												s.toggleVacancyStatus(vacancy.id_vacancy, vacancy.status === 'active')}
 											disabled={s.togglingVacancy === vacancy.id_vacancy}
-											aria-label="{vacancy.is_active !== false
+											aria-label="{vacancy.status === 'active'
 												? 'Pausar'
 												: 'Activar'} vacante {vacancy.title}"
 											class="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50
-												{vacancy.is_active !== false
+												{vacancy.status === 'active'
 												? 'border-yellow-200 text-yellow-700 hover:bg-yellow-50'
 												: 'border-green-200 text-green-700 hover:bg-green-50'}"
 										>
@@ -527,7 +527,7 @@
 												<div
 													class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
 												></div>
-											{:else if vacancy.is_active !== false}
+											{:else if vacancy.status === 'active'}
 												<PauseCircle size={13} />
 												Pausar
 											{:else}

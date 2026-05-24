@@ -8,6 +8,12 @@ export interface Vacancy {
 	modality: string;
 	salary_min: number | null;
 	salary_max: number | null;
+	status: 'active' | 'paused' | 'expired' | 'deleted';
+	experience_level?: 'junior' | 'mid' | 'senior' | 'executive';
+	category?: string;
+	contract_type?: 'full_time' | 'part_time' | 'freelance' | 'contract';
+	description?: string;
+	published_at?: string;
 }
 
 export interface SearchFilters {
