@@ -74,6 +74,8 @@
 			.map((k) => contractMap[k]);
 
 		return vacancyStore.vacancies.filter((job: Vacancy) => {
+			if ((job as any).status !== 'active') return false;
+
 			if (search) {
 				const title = job.title?.toLowerCase() ?? '';
 				if (!title.includes(search)) return false;

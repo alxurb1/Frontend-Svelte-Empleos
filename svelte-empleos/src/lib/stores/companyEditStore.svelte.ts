@@ -54,7 +54,7 @@ export interface Vacancy {
 	description?: string | null;
 	requirements?: string | null;
 	benefits?: string | null;
-	is_active?: boolean;
+	status?: 'active' | 'paused' | 'expired' | 'deleted'; // ← reemplaza is_active
 	created_at?: string;
 }
 
@@ -440,14 +440,16 @@ function createCompanyDashboardStore() {
 
 		async toggleVacancyStatus(vacancyId: string, currentActive: boolean) {
 			togglingVacancy = vacancyId;
+			const newStatus = currentActive ? 'paused' : 'active';
 			try {
-				await fetch(`${API_URL}/vacancy/${vacancyId}`, {
+				await fetch(`${API_URL}/vacancy/${vacancyId}/status`, {
+					// ← /status
 					method: 'PUT',
 					headers: authHeaders,
-					body: JSON.stringify({ is_active: !currentActive })
+					body: JSON.stringify({ status: newStatus }) // ← status, no is_active
 				});
 				vacancies = vacancies.map((v) =>
-					v.id_vacancy === vacancyId ? { ...v, is_active: !currentActive } : v
+					v.id_vacancy === vacancyId ? { ...v, status: newStatus } : v
 				);
 			} catch {
 			} finally {
