@@ -161,4 +161,8 @@
 			{loading ? 'Iniciando sesión' : 'Iniciar sesión'}
 		</button>
 	</div>
+	<p class="mt-4 text-sm text-gray-500">
+		¿No tienes cuenta?
+		<a href="/register" class="font-semibold text-blue-600 hover:underline">Registrate</a>
+	</p>
 </div>
