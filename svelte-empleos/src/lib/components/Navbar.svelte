@@ -7,7 +7,9 @@
 
 	let menuOpen = $state(false);
 
-	let profileHref = $derived(authStore.userId ? `/profile?id=${authStore.userId}` : '/profile');
+	let profileHref = $derived(
+		authStore.userId ? `/profileView?id=${authStore.userId}` : '/profileView'
+	);
 
 	function miPerfilHref() {
 		if (authStore.userRole === 'candidate') return '/profileEdit';
@@ -71,7 +73,7 @@
 	<!-- Auth (desktop) -->
 	<div class="ml-3 hidden items-center gap-2 lg:flex">
 		{#if authStore.isAuthenticated}
-			<a href={profileHref} class="text-blue-600" aria-label="Mi perfil">
+			<a href={miPerfilHref()} class="text-blue-600" aria-label="Mi perfil">
 				<User class="h-6 w-6" />
 			</a>
 

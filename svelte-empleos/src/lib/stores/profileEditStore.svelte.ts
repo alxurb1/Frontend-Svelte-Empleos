@@ -82,6 +82,14 @@ export interface Application {
 
 export type ApplicationStatus = 'pending' | 'reviewing' | 'interview' | 'offer' | 'rejected';
 
+export interface ProfileView {
+	id_view: string;
+	viewer_name?: string;
+	viewer_title?: string;
+	viewer_avatar?: string;
+	viewed_at: string;
+}
+
 export const STATUS_LABELS: Record<ApplicationStatus, { label: string; color: string }> = {
 	pending: { label: 'Pendiente', color: 'bg-gray-100 text-gray-600' },
 	reviewing: { label: 'En Revisión', color: 'bg-yellow-100 text-yellow-700' },
@@ -149,12 +157,15 @@ const emptyAlertForm = (): AlertForm => ({
 // -----------------------------------------------STORES---------------------------------
 
 function createProfileStore() {
-	// Auth
-	const userId = typeof localStorage !== 'undefined' ? localStorage.getItem('userId') : null;
-	const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-	const authHeaders = {
-		'Content-Type': 'application/json',
-		...(token ? { Authorization: `Bearer ${token}` } : {})
+	// Auth — leídos en cada llamada para reflejar la sesión actual
+	const getUserId = () =>
+		typeof localStorage !== 'undefined' ? localStorage.getItem('userId') : null;
+	const getAuthHeaders = () => {
+		const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+		return {
+			'Content-Type': 'application/json',
+			...(token ? { Authorization: `Bearer ${token}` } : {})
+		};
 	};
 
 	// Profile
@@ -182,6 +193,11 @@ function createProfileStore() {
 	let applicationsLoading = $state(false);
 	let applicationsError = $state<string | null>(null);
 
+	// Views
+	let views = $state<ProfileView[]>([]);
+	let viewsLoading = $state(false);
+	let viewsError = $state<string | null>(null);
+
 	// Alerts
 	let alerts = $state<Alert[]>([]);
 	let alertForm = $state<AlertForm>(emptyAlertForm());
@@ -190,7 +206,7 @@ function createProfileStore() {
 
 	return {
 		get userId() {
-			return userId;
+			return getUserId();
 		},
 		get profile() {
 			return profile;
@@ -231,6 +247,15 @@ function createProfileStore() {
 		get applicationsError() {
 			return applicationsError;
 		},
+		get views() {
+			return views;
+		},
+		get viewsLoading() {
+			return viewsLoading;
+		},
+		get viewsError() {
+			return viewsError;
+		},
 		get alerts() {
 			return alerts;
 		},
@@ -247,10 +272,10 @@ function createProfileStore() {
 		// ------------------------------------------PROFILE-----------------------------------------s
 
 		async loadProfile() {
-			if (!userId) return;
+			if (!getUserId()) return;
 			profileLoading = true;
 			try {
-				const res = await fetch(`${API_URL}/me/${userId}/profile`);
+				const res = await fetch(`${API_URL}/me/${getUserId()}/profile`);
 				const data: CandidateProfile = await res.json();
 				profile = data;
 				profileForm = {
@@ -270,7 +295,7 @@ function createProfileStore() {
 		},
 
 		async saveProfile() {
-			if (!userId) return;
+			if (!getUserId()) return;
 			profileSaving = true;
 			profileMessage = null;
 
@@ -280,9 +305,9 @@ function createProfileStore() {
 			);
 
 			try {
-				const res = await fetch(`${API_URL}/me/${userId}/profile`, {
+				const res = await fetch(`${API_URL}/me/${getUserId()}/profile`, {
 					method: 'PUT',
-					headers: authHeaders,
+					headers: getAuthHeaders(),
 					body: JSON.stringify(body)
 				});
 				if (!res.ok) {
@@ -299,7 +324,7 @@ function createProfileStore() {
 		},
 
 		async uploadPhoto(file: File) {
-			if (!userId) return;
+			if (!getUserId()) return;
 			if (!file.type.startsWith('image/')) {
 				profileMessage = { text: 'Por favor selecciona una imagen válida.', ok: false };
 				return;
@@ -314,7 +339,7 @@ function createProfileStore() {
 			formData.append('photo', file);
 
 			try {
-				const res = await fetch(`${API_URL}/me/${userId}/photo`, {
+				const res = await fetch(`${API_URL}/me/${getUserId()}/photo`, {
 					method: 'POST',
 					body: formData
 				});
@@ -336,12 +361,12 @@ function createProfileStore() {
 
 		async addSkill(name: string) {
 			const trimmed = name.trim();
-			if (!trimmed || !userId) return;
+			if (!trimmed || !getUserId()) return;
 			skillAdding = true;
 			try {
-				await fetch(`${API_URL}/me/${userId}/skills`, {
+				await fetch(`${API_URL}/me/${getUserId()}/skills`, {
 					method: 'POST',
-					headers: authHeaders,
+					headers: getAuthHeaders(),
 					body: JSON.stringify({ name: trimmed })
 				});
 				await this.loadProfile();
@@ -351,14 +376,14 @@ function createProfileStore() {
 		},
 
 		async deleteSkill(skillId: string) {
-			await fetch(`${API_URL}/me/skills/${skillId}`, { method: 'DELETE', headers: authHeaders });
+			await fetch(`${API_URL}/me/skills/${skillId}`, { method: 'DELETE', headers: getAuthHeaders() });
 			await this.loadProfile();
 		},
 
 		// +--------------------------------------EXPERIENCIAS+---------------------------------------
 
 		async addExperience() {
-			if (!userId) return;
+			if (!getUserId()) return;
 			const body = {
 				job_title: experienceForm.job_title.trim(),
 				company_name: experienceForm.company_name.trim(),
@@ -372,9 +397,9 @@ function createProfileStore() {
 			}
 			experienceAdding = true;
 			try {
-				await fetch(`${API_URL}/me/${userId}/experience`, {
+				await fetch(`${API_URL}/me/${getUserId()}/experience`, {
 					method: 'POST',
-					headers: authHeaders,
+					headers: getAuthHeaders(),
 					body: JSON.stringify(body)
 				});
 				experienceForm = emptyExperienceForm();
@@ -387,7 +412,7 @@ function createProfileStore() {
 		async deleteExperience(experienceId: string) {
 			await fetch(`${API_URL}/me/experience/${experienceId}`, {
 				method: 'DELETE',
-				headers: authHeaders
+				headers: getAuthHeaders()
 			});
 			await this.loadProfile();
 		},
@@ -395,12 +420,12 @@ function createProfileStore() {
 		// ---------------------------------------------CV-------------------------------------s
 
 		async uploadCV(file: File) {
-			if (!userId) return;
+			if (!getUserId()) return;
 			cvUploading = true;
 			const formData = new FormData();
 			formData.append('cv', file);
 			try {
-				await fetch(`${API_URL}/me/${userId}/cv`, { method: 'POST', body: formData });
+				await fetch(`${API_URL}/me/${getUserId()}/cv`, { method: 'POST', body: formData });
 				profileMessage = { text: 'CV subido correctamente.', ok: true };
 				await this.loadProfile();
 			} catch {
@@ -411,19 +436,19 @@ function createProfileStore() {
 		},
 
 		async deleteCV(cvId: string) {
-			await fetch(`${API_URL}/me/cv/${cvId}`, { method: 'DELETE', headers: authHeaders });
+			await fetch(`${API_URL}/me/cv/${cvId}`, { method: 'DELETE', headers: getAuthHeaders() });
 			await this.loadProfile();
 		},
 
 		// ----------------------------------------APLICACIONES VACANTES-----------------------------------
 
 		async loadApplications() {
-			if (!userId) return;
+			if (!getUserId()) return;
 			applicationsLoading = true;
 			applicationsError = null;
 			try {
-				const res = await fetch(`${API_URL}/me/${userId}/applications`, {
-					headers: authHeaders
+				const res = await fetch(`${API_URL}/me/${getUserId()}/applications`, {
+					headers: getAuthHeaders()
 				});
 				const data = await res.json();
 				applications = Array.isArray(data) ? data : [];
@@ -434,13 +459,30 @@ function createProfileStore() {
 			}
 		},
 
+		// ----------------------------------------VISTAS DE PERFIL-----------------------------------
+
+		async loadViews() {
+			if (!getUserId()) return;
+			viewsLoading = true;
+			viewsError = null;
+			try {
+				const res = await fetch(`${API_URL}/me/${getUserId()}/views`, { headers: getAuthHeaders() });
+				const data = await res.json();
+				views = Array.isArray(data) ? data : [];
+			} catch {
+				viewsError = 'Error al cargar las vistas.';
+			} finally {
+				viewsLoading = false;
+			}
+		},
+
 		//------------------------------------------ALERTAS--------------------------------------------s
 
 		async loadAlerts() {
-			if (!userId) return;
+			if (!getUserId()) return;
 			alertsLoading = true;
 			try {
-				const res = await fetch(`${API_URL}/me/${userId}/alerts`, { headers: authHeaders });
+				const res = await fetch(`${API_URL}/me/${getUserId()}/alerts`, { headers: getAuthHeaders() });
 				const data = await res.json();
 				alerts = Array.isArray(data) ? data : [];
 			} catch {
@@ -451,15 +493,15 @@ function createProfileStore() {
 		},
 
 		async createAlert() {
-			if (!alertForm.name.trim() || !userId) {
+			if (!alertForm.name.trim() || !getUserId()) {
 				profileMessage = { text: 'El nombre de la alerta es obligatorio.', ok: false };
 				return;
 			}
 			alertCreating = true;
 			try {
-				await fetch(`${API_URL}/me/${userId}/alerts`, {
+				await fetch(`${API_URL}/me/${getUserId()}/alerts`, {
 					method: 'POST',
-					headers: authHeaders,
+					headers: getAuthHeaders(),
 					body: JSON.stringify(alertForm)
 				});
 				alertForm = emptyAlertForm();
@@ -472,7 +514,7 @@ function createProfileStore() {
 		async toggleAlert(alertId: string, isActive: boolean) {
 			await fetch(`${API_URL}/me/alerts/${alertId}`, {
 				method: 'PUT',
-				headers: authHeaders,
+				headers: getAuthHeaders(),
 				body: JSON.stringify({ is_active: isActive })
 			});
 			alerts = alerts.map((a) => (a.id_alert === alertId ? { ...a, is_active: isActive } : a));
@@ -481,7 +523,7 @@ function createProfileStore() {
 		async deleteAlert(alertId: string) {
 			await fetch(`${API_URL}/me/alerts/${alertId}`, {
 				method: 'DELETE',
-				headers: authHeaders
+				headers: getAuthHeaders()
 			});
 			await this.loadAlerts();
 		}

@@ -41,7 +41,9 @@ export const getInitials = (name?: string) => {
 function createProfileStore() {
 	let profile = $state<UserProfile | null>(null);
 	let loading = $state(true);
-	let error = $state<string | null>(null);
+  let error = $state<string | null>(null);
+  let viewCount = $state<number | null>(null)
+	let recordingView = $state(false)
 
 	return {
 		get profile() {
@@ -53,8 +55,31 @@ function createProfileStore() {
 		get error() {
 			return error;
 		},
+    get viewCount() {
+      return viewCount;
+		},
 
-		async fetchProfile(id: string | null) {
+    async recordingView(profileId: string) {
+      const viewerId = localStorage.getItem("userId");
+      if (!viewerId || viewerId === profileId) return;
+
+      recordingView = true;
+       try {
+         const res = await fetch(`${API_URL}/me/${profileId}/view`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ id_viewer: viewerId })
+         });
+         const data = await res.json();
+         viewCount = data.view_count ?? null;
+       } catch {
+
+       } finally {
+         recordingView = false;
+       }
+    },
+
+    async fetchProfile(id: string | null) {
 			const resolvedId =
 				id ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('userId') : null);
 
