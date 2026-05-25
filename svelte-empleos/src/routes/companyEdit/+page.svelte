@@ -858,7 +858,7 @@
 									</div>
 
 									<div class="flex flex-wrap gap-2">
-										<a href={`/profile?id=${app.id_user}`}>
+										<a href={`/profileView?id=${app.id_user}`}>
 											<button
 												class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-gray-300"
 											>

@@ -65,7 +65,7 @@ function createProfileStore() {
 			}
 
 			try {
-				const res = await fetch(${API_URL}/me/${resolvedId}/profile);
+				const res = await fetch(`${API_URL}/me/${resolvedId}/profile`);
 				if (!res.ok) throw new Error('Error al cargar el perfil');
 				profile = await res.json();
 			} catch (e) {
