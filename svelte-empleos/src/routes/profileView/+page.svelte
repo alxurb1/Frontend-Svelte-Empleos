@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { profileStore, getInitials } from '$lib/stores/profileStore.svelte';
+	import { API_URL } from '$lib/config';
 
 	import { Download, Mail, Phone, FileUser, LogOut } from 'lucide-svelte';
 
@@ -17,8 +18,17 @@
 		window.location.href = '/login';
 	};
 
-	onMount(() => {
-		profileStore.fetchProfile(urlId);
+	onMount(async () => {
+		await profileStore.fetchProfile(urlId);
+
+		const profileId = urlId ?? myId;
+		if (profileId && !isOwnProfile) {
+			fetch(`${API_URL}/me/${profileId}/view`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id_viewer: myId })
+			});
+		}
 	});
 </script>
 

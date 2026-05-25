@@ -41,6 +41,7 @@
 			return;
 		}
 		s.loadProfile();
+		s.loadViews();
 	});
 
 	// ---------------------------------ATAJOS------------------------------s
@@ -126,6 +127,11 @@
 				<div class="flex justify-between text-sm">
 					<span class="text-gray-400">Postulaciones</span>
 					<span class="font-bold text-gray-800">{s.applications.length}</span>
+				</div>
+
+				<div class="mt-3 flex justify-between text-sm">
+					<span class="text-gray-400">Vistas de Perfil</span>
+					<span class="font-bold text-gray-800">{s.views.length}</span>
 				</div>
 			</div>
 		</aside>
