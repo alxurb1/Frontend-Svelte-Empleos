@@ -16,6 +16,12 @@
 		return '#';
 	}
 
+	let searchQuery = $state('');
+
+	function handleSearch() {
+		if (searchQuery.trim()) goto(`/searchResults?q=${encodeURIComponent(searchQuery.trim())}`);
+	}
+
 	async function handleLogout() {
 		try {
 			const res = await fetch(`${API_URL}/auth/logout`, {
@@ -55,6 +61,8 @@
 	<div class="mx-auto hidden w-full max-w-md lg:block">
 		<input
 			type="text"
+			bind:value={searchQuery}
+			onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 			placeholder="Buscar empleos, empresas..."
 			class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
 		/>
